@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const morgan = require("morgan");
+const jwt = require("jsonwebtoken");
 
 require("dotenv").config();
 const PORT = process.env.PORT || 8000;
@@ -34,6 +35,35 @@ const authMiddleware = (req, res, next) => {
     res.status(401).send({ message: "Unauthorized: Invalid API key" });
   }
 };
+
+const authenticationToken = (req, res, next) => {
+  const token = req.headers["authorization"]?.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ message: "Access token is missing" });
+  }
+
+  jwt.verify(token, process.env.SECRET_KEY, (err, user) => {
+    if (err) return res.status(403).json({ message: "Invalid Token" });
+
+    res.user = user;
+    next();
+  });
+};
+
+// Route to generate toke
+
+app.post("/api/login", (req, res) => {
+  const username = req.body.username;
+
+  const user = { name: username };
+
+  const token = jwt.sign(user, process.env.SECRET_KEY, { expiresIn: "1h" });
+  res.json({ token });
+});
+
+app.get("/api/user", authenticationToken, (req, res) => {
+  res.json(users);
+});
 
 // Error handling middleware
 
